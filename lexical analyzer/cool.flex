@@ -57,7 +57,6 @@ SUB         \-
 MULT        \*
 DIV         \/
 LT          <
-GT          >
 LTE         <=
 TILDE       ~
 
