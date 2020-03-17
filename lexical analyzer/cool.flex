@@ -7,7 +7,9 @@
  *  output, so headers and global definitions are placed here to be visible
  * to the code in the file.  Don't remove anything that was here initially
  */
+
 %{
+/* ---------------------Declarations----------------------- */
 #include <cool-parse.h>
 #include <stringtab.h>
 #include <utilities.h>
@@ -40,10 +42,11 @@ extern int verbose_flag;
 extern YYSTYPE cool_yylval;
 
 /*
- *  Add Your own definitions here
+ *  Add Your own declarations here
  */
 
 %}
+/* ---------------------Definitions------------------------ */
 
 /*
  * Define names for regular expressions here.
@@ -52,6 +55,7 @@ extern YYSTYPE cool_yylval;
 DARROW          =>
 
 %%
+/* ----------------------Rules----------------------------- */
 
  /*
   *  Nested comments
@@ -78,3 +82,4 @@ DARROW          =>
 
 
 %%
+/* -------------------User Subroutines--------------------- */
