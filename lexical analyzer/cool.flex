@@ -52,7 +52,24 @@ extern YYSTYPE cool_yylval;
  * Define names for regular expressions here.
  */
 
-DARROW          =>
+ADD         \+
+SUB         \-
+MULT        \*
+DIV         \/
+LT          <
+GT          >
+LTE         <=
+TILDE       ~
+
+ASSIGN      <-
+DARROW      =>
+DOT         \.
+
+DQUOTE      \"
+OPENPAREN   \(
+CLOSEPAREN  \)
+
+WSPACE      [ \n\f\r\t\v]
 
 %%
 /* ----------------------Rules----------------------------- */
