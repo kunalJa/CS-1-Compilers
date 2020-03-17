@@ -93,11 +93,86 @@ WSPACE      [ \n\f\r\t\v]
   return LE;
 }
 
- /*
-  * Keywords are case-insensitive except for the values true and false,
-  * which must begin with a lower-case letter.
-  */
+/* The "true" keyword. The first letter must be lowercase. */
+t(?i:rue) {
+  cool_yylex.boolean = true;
+  return BOOL_CONST;
+}
 
+/* The "false" keyword. The first letter must be lowercase. */
+f(?i:alse) {
+  cool_yylex.boolean = false;
+  return BOOL_CONST;
+}
+
+/* Keywords, all of which are case-insensitive. */
+(?i:CLASS) {
+  return CLASS;
+}
+
+(?i:ELSE) {
+  return ELSE;
+}
+
+(?i:FI) {
+  return FI;
+}
+
+(?i:IF) {
+  return IF;
+}
+
+(?i:IN) {
+  return IN;
+}
+
+(?i:INHERITS) {
+  return INHERITS;
+}
+
+(?i:LET) {
+  return LET;
+}
+
+(?i:LOOP) {
+  return LOOP;
+}
+
+(?i:POOL) {
+  return POOL;
+}
+
+(?i:THEN) {
+  return THEN;
+}
+
+(?i:WHILE) {
+  return WHILE;
+}
+
+(?i:CASE) {
+  return CASE;
+}
+
+(?i:ESAC) {
+  return ESAC;
+}
+
+(?i:OF) {
+  return OF;
+}
+
+(?i:NEW) {
+  return NEW;
+}
+
+(?i:ISVOID) {
+  return ISVOID;
+}
+
+(?i:NOT) {
+  return NOT;
+}
 
  /*
   *  String constants (C syntax)
