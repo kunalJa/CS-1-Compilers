@@ -48,25 +48,11 @@ extern YYSTYPE cool_yylval;
 %}
 /* ---------------------Definitions------------------------ */
 
-/*
- * Define names for regular expressions here.
- */
+SINGLECHAR  [+\-*/<@~.(){}=:;,]
 
-ADD         \+
-SUB         \-
-MULT        \*
-DIV         \/
-LT          <
 LE         <=
-TILDE       ~
-
 ASSIGN      <-
 DARROW      =>
-DOT         \.
-
-DQUOTE      \"
-OPENPAREN   \(
-CLOSEPAREN  \)
 
 WSPACE      [ \n\f\r\t\v]
 
@@ -76,6 +62,11 @@ WSPACE      [ \n\f\r\t\v]
  /*
   *  Nested comments
   */
+
+/* Single character symbols, for example: "+" */
+{SINGLECHAR} {
+  return (int) yylval[0];
+}
 
 /* Assignment, for example: "ID <- expr" */
 {ASSIGN} {
