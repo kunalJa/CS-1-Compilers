@@ -78,17 +78,17 @@ WSPACE      [ \n\f\r\t\v]
   */
 
 
- /*
-  *  The multiple-character operators.
-  */
+/* Assignment, for example: "ID <- expr" */
 {ASSIGN} {
   return ASSIGN;
 }
 
+/* Option in a case, for example: "case expr of [[ID:TYPE=>expr;]]+ esac" */
 {DARROW} {
   return DARROW;
 }
 
+/* Less than or equal to, for example: "expr <= expr" */
 {LE} {
   return LE;
 }
