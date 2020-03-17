@@ -57,7 +57,7 @@ SUB         \-
 MULT        \*
 DIV         \/
 LT          <
-LTE         <=
+LE         <=
 TILDE       ~
 
 ASSIGN      <-
