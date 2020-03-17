@@ -77,7 +77,6 @@ WSPACE      [ \n\f\r\t\v]
   *  Nested comments
   */
 
-
 /* Assignment, for example: "ID <- expr" */
 {ASSIGN} {
   return ASSIGN;
@@ -175,8 +174,8 @@ f(?i:alse) {
 }
 
 /* White space characters in the Cool language include " ", "\n", "\f", "\r", "\t", and "\v" */
-{WSPACE} {
-  return (int) yytext[0];
+{WSPACE}+ {
+  /* Do nothing */
 }
 
  /*
