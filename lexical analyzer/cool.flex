@@ -93,19 +93,19 @@ WSPACE      [ \n\f\r\t\v]
   return LE;
 }
 
-/* The "true" keyword. The first letter must be lowercase. */
+/* The "true" keyword. The first letter must be lowercase */
 t(?i:rue) {
   cool_yylex.boolean = true;
   return BOOL_CONST;
 }
 
-/* The "false" keyword. The first letter must be lowercase. */
+/* The "false" keyword. The first letter must be lowercase */
 f(?i:alse) {
   cool_yylex.boolean = false;
   return BOOL_CONST;
 }
 
-/* Keywords, all of which are case-insensitive. */
+/* Keywords, all of which are case-insensitive */
 (?i:CLASS) {
   return CLASS;
 }
@@ -172,6 +172,11 @@ f(?i:alse) {
 
 (?i:NOT) {
   return NOT;
+}
+
+/* White space characters in the Cool language include " ", "\n", "\f", "\r", "\t", and "\v" */
+{WSPACE} {
+  return (int) yytext[0];
 }
 
  /*
