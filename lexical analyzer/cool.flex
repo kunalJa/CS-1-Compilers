@@ -81,7 +81,17 @@ WSPACE      [ \n\f\r\t\v]
  /*
   *  The multiple-character operators.
   */
-{DARROW}		{ return (DARROW); }
+{ASSIGN} {
+  return ASSIGN;
+}
+
+{DARROW} {
+  return DARROW;
+}
+
+{LE} {
+  return LE;
+}
 
  /*
   * Keywords are case-insensitive except for the values true and false,
