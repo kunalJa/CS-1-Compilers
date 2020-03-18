@@ -84,18 +84,24 @@ DARROW      =>
     }
   }
 
-  \n {}
-
-  <<EOF>> {
-    /* ERROR */
+  \n {
+    curr_lineno++;
   }
 
-  [^*()\n] {}
+  <<EOF>> {
+    cool_yylval.error_msg = "EOF in comment";
+    return ERROR;
+  }
+
+  [*()] {}
+
+  [^*()\n]+ {}
 
 }
 
 \*\) {
-  /* ERROR */
+  cool_yylex.error_msg = "Unmatched *)";
+  return ERROR;
 }
 
 
@@ -116,21 +122,27 @@ DARROW      =>
 
   /* Error, unescaped new lines cannot appear inside a string literal */
   \n {
-    /* ERROR */
+    BEGIN(INITIAL);
+    curr_lineno++;
+    cool_yylval.error_msg = "Unterminated string constant";
+    return ERROR;
   }
 
   /* Error, null cannot appear inside a string literal */
   \0 {
-    /* ERROR */
+    cool_yylval.error_msg = "String contains null character";
+    return ERROR;
   }
 
   /* Error, EOF cannot appear inside a string literal */
   <<EOF>> {
-    /* ERROR */
+    cool_yylval.error_msg = "String contains null character";
+    return ERROR;
   }
 
   \\n {
     *string_buf_ptr++ = '\n';
+    curr_lineno++;
   }
 
   \\t {
@@ -148,6 +160,8 @@ DARROW      =>
   \\(.|\n) {
     *string_buf_ptr++ = yytext[1];
   }
+
+  \\ {}
 
   /* Any character within the string literal except key String characters */
   [^\\\n\"]+ {
@@ -266,7 +280,9 @@ f(?i:alse) {
 
 /* White space characters in the Cool language include " ", "\n", "\f", "\r", "\t", and "\v" */
 {WSPACE}+ {
-  /* Do nothing */
+  if (!yytext.compare("\n")) {
+    curr_lineno++;
+  }
 }
 
 /* Type names begin with capital leters and Instance names begin with lowercase letters */
@@ -276,6 +292,11 @@ f(?i:alse) {
     return TYPEID;
   }
   return OBJECTID;
+}
+
+(.|\n) {
+  cool_yylval.error_msg = yytext;
+  return ERROR;
 }
 
 %%
