@@ -44,7 +44,7 @@ extern YYSTYPE cool_yylval;
 int comment_level;
 
 %}
-/* ---------------------Definitions------------------------ */
+  /* ---------------------Definitions------------------------ */
 
 SINGLECHAR  [+\-*/<@~.(){}=:;,]
 INTEGERS    [0-9]+
@@ -57,28 +57,28 @@ ASSIGN      <-
 DARROW      =>
 
 %x str
+%x errorstr
 %x comment
 
 %%
-/* ----------------------Rules----------------------------- */
+  /* ----------------------Rules----------------------------- */
 
-/* Inline comment */
-{INLINE} {}
+{INLINE} { /* Inline comment */ }
 
-/* Start of a multi-line comment */
 \(\* {
+  /* Start of a multi-line comment */
   comment_level = 1;
   BEGIN(comment);
 }
 
 <comment>{
-  /* Allow for mult-level commenting */
   \(\* {
+    /* Allow for mult-level commenting */
     comment_level++;
   }
 
-  /* Exit the comment state only if we have closed the final comment */
   \*\) {
+    /* Exit the comment state only if we have closed the final comment */
     if (--comment_level == 0) {
       BEGIN(INITIAL);
     }
@@ -89,6 +89,7 @@ DARROW      =>
   }
 
   <<EOF>> {
+    BEGIN(INITIAL);
     cool_yylval.error_msg = "EOF in comment";
     return ERROR;
   }
@@ -100,42 +101,44 @@ DARROW      =>
 }
 
 \*\) {
-  cool_yylex.error_msg = "Unmatched *)";
+  cool_yylval.error_msg = "Unmatched *)";
   return ERROR;
 }
 
 
-/* Start of a string literal */
 \" {
-  string_buf_ptr = string_buf;
+  /* Start of a string literal */
   BEGIN(str);
+  string_buf_ptr = string_buf;
 }
 
 <str>{
-  /* End of a string literal */
   \" {
+    /* End of a string literal */
     BEGIN(INITIAL);
     *string_buf_ptr = '\0';
     cool_yylval.symbol = stringtable.add_string(string_buf);
     return STR_CONST;
   }
 
-  /* Error, unescaped new lines cannot appear inside a string literal */
   \n {
+    /* Error, unescaped new lines cannot appear inside a string literal */
     BEGIN(INITIAL);
     curr_lineno++;
     cool_yylval.error_msg = "Unterminated string constant";
     return ERROR;
   }
 
-  /* Error, null cannot appear inside a string literal */
   \0 {
+    /* Error, null cannot appear inside a string literal */
+    BEGIN(errorstr);
     cool_yylval.error_msg = "String contains null character";
     return ERROR;
   }
 
-  /* Error, EOF cannot appear inside a string literal */
   <<EOF>> {
+    /* Error, EOF cannot appear inside a string literal */
+    BEGIN(INITIAL);
     cool_yylval.error_msg = "String contains null character";
     return ERROR;
   }
@@ -143,73 +146,116 @@ DARROW      =>
   \\n {
     *string_buf_ptr++ = '\n';
     curr_lineno++;
+    if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
+      BEGIN(errorstr);
+      cool_yylval.error_msg = "String constant too long";
+      return ERROR;
+    }
   }
 
   \\t {
     *string_buf_ptr++ = '\t';
+    if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
+      BEGIN(errorstr);
+      cool_yylval.error_msg = "String constant too long";
+      return ERROR;
+    }
   }
 
   \\b {
     *string_buf_ptr++ = '\b';
+    if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
+      BEGIN(errorstr);
+      cool_yylval.error_msg = "String constant too long";
+      return ERROR;
+    }
   }
 
   \\f {
     *string_buf_ptr++ = '\f';
+    if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
+      BEGIN(errorstr);
+      cool_yylval.error_msg = "String constant too long";
+      return ERROR;
+    }
   }
 
-  \\(.|\n) {
+  \\[^\0] {
     *string_buf_ptr++ = yytext[1];
+    if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
+      BEGIN(errorstr);
+      cool_yylval.error_msg = "String constant too long";
+      return ERROR;
+    }
   }
 
   \\ {}
 
-  /* Any character within the string literal except key String characters */
-  [^\\\n\"]+ {
+  [^\\\n\"\0]+ {
+    /* Any character within the string literal except key String characters */
     char *yptr = yytext;
-    while (*yptr)
+    while (*yptr) {
       *string_buf_ptr++ = *yptr++;
+    }
+    if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
+      BEGIN(errorstr);
+      cool_yylval.error_msg = "String constant too long";
+      return ERROR;
     }
   }
 }
 
+<errorstr>{
+  \" {
+    BEGIN(INITIAL);
+  }
+
+  \n {
+    BEGIN(INITIAL);
+    curr_lineno++;
+  }
+
+  [^\"\n]+ {}
+}
+
 {INTEGERS} {
-  cool_yylex.symbol = inttable.add_string(yytext);
+  cool_yylval.symbol = inttable.add_string(yytext);
   return INT_CONST;
 }
 
-/* Single character symbols, for example: "+" */
 {SINGLECHAR} {
-  return (int) yylval[0];
+  /* Single character symbols, for example: "+" */
+  return (int) yytext[0];
 }
 
-/* Assignment, for example: "ID <- expr" */
 {ASSIGN} {
+  /* Assignment, for example: "ID <- expr" */
   return ASSIGN;
 }
 
-/* Option in a case, for example: "case expr of [[ID:TYPE=>expr;]]+ esac" */
 {DARROW} {
+  /* Option in a case, for example: "case expr of [[ID:TYPE=>expr;]]+ esac" */
   return DARROW;
 }
 
-/* Less than or equal to, for example: "expr <= expr" */
 {LE} {
+  /* Less than or equal to, for example: "expr <= expr" */
   return LE;
 }
 
-/* The "true" keyword. The first letter must be lowercase */
 t(?i:rue) {
-  cool_yylex.boolean = true;
+  /* The "true" keyword. The first letter must be lowercase */
+  cool_yylval.boolean = true;
   return BOOL_CONST;
 }
 
-/* The "false" keyword. The first letter must be lowercase */
 f(?i:alse) {
-  cool_yylex.boolean = false;
+  /* The "false" keyword. The first letter must be lowercase */
+  cool_yylval.boolean = false;
   return BOOL_CONST;
 }
 
-/* Keywords, all of which are case-insensitive */
+  /* Keywords, all of which are case-insensitive */
 (?i:CLASS) {
   return CLASS;
 }
@@ -278,15 +324,15 @@ f(?i:alse) {
   return NOT;
 }
 
-/* White space characters in the Cool language include " ", "\n", "\f", "\r", "\t", and "\v" */
 {WSPACE}+ {
-  if (!yytext.compare("\n")) {
+  /* White space characters in the Cool language include " ", "\n", "\f", "\r", "\t", and "\v" */
+  if (strcmp(yytext,"\n") == 0) {
     curr_lineno++;
   }
 }
 
-/* Type names begin with capital leters and Instance names begin with lowercase letters */
 {ID} {
+  /* Type names begin with capital leters and Instance names begin with lowercase letters */
   cool_yylval.symbol = idtable.add_string(yytext);
   if (isupper(yytext[0])) {
     return TYPEID;
@@ -300,4 +346,4 @@ f(?i:alse) {
 }
 
 %%
-/* -------------------User Subroutines--------------------- */
+  /* -------------------User Subroutines--------------------- */
