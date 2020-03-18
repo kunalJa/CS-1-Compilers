@@ -49,6 +49,7 @@ extern YYSTYPE cool_yylval;
 /* ---------------------Definitions------------------------ */
 
 SINGLECHAR  [+\-*/<@~.(){}=:;,]
+INTEGERS     [0-9]+
 
 LE         <=
 ASSIGN      <-
@@ -56,12 +57,72 @@ DARROW      =>
 
 WSPACE      [ \n\f\r\t\v]
 
+%x str
+
 %%
 /* ----------------------Rules----------------------------- */
 
  /*
   *  Nested comments
   */
+
+\" {
+  string_buf_ptr = string_buf;
+  BEGIN(str);
+}
+
+<str>{
+  \" {
+    BEGIN(INITIAL);
+    *string_buf_ptr = '\0';
+    cool_yylval.symbol = stringtable.add_string(string_buf);
+    return STR_CONST;
+  }
+
+  \n {
+    /* ERROR */
+  }
+
+  \0 {
+    /* ERROR */
+  }
+
+  <<EOF>> {
+    /* ERROR */
+  }
+
+  \\n {
+    *string_buf_ptr++ = '\n';
+  }
+
+  \\t {
+    *string_buf_ptr++ = '\t';
+  }
+
+  \\b {
+    *string_buf_ptr++ = '\b';
+  }
+
+  \\f {
+    *string_buf_ptr++ = '\f';
+  }
+
+  \\(.|\n) {
+    *string_buf_ptr++ = yytext[1];
+  }
+
+  [^\\\n\"]+ {
+    char *yptr = yytext;
+    while (*yptr)
+      *string_buf_ptr++ = *yptr++;
+    }
+  }
+}
+
+{INTEGERS} {
+  cool_yylex.symbol = inttable.add_string(yytext);
+  return INT_CONST;
+}
 
 /* Single character symbols, for example: "+" */
 {SINGLECHAR} {
