@@ -49,9 +49,10 @@ extern YYSTYPE cool_yylval;
 /* ---------------------Definitions------------------------ */
 
 SINGLECHAR  [+\-*/<@~.(){}=:;,]
-INTEGERS     [0-9]+
+INTEGERS    [0-9]+
+ID          [A-Za-z][0-9A-Za-z_]*
 
-LE         <=
+LE          <=
 ASSIGN      <-
 DARROW      =>
 
@@ -236,15 +237,14 @@ f(?i:alse) {
   /* Do nothing */
 }
 
-
-
- /*
-  *  String constants (C syntax)
-  *  Escape sequence \c is accepted for all characters c. Except for
-  *  \n \t \b \f, the result is c.
-  *
-  */
-
+/* Type names begin with capital leters and Instance names begin with lowercase letters */
+{ID} {
+  cool_yylval.symbol = idtable.add_string(yytext);
+  if (isupper(yytext[0])) {
+    return TYPEID;
+  }
+  return OBJECTID;
+}
 
 %%
 /* -------------------User Subroutines--------------------- */
