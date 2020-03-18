@@ -66,12 +66,14 @@ WSPACE      [ \n\f\r\t\v]
   *  Nested comments
   */
 
+/* Start of a string literal */
 \" {
   string_buf_ptr = string_buf;
   BEGIN(str);
 }
 
 <str>{
+  /* End of a string literal */
   \" {
     BEGIN(INITIAL);
     *string_buf_ptr = '\0';
@@ -79,14 +81,17 @@ WSPACE      [ \n\f\r\t\v]
     return STR_CONST;
   }
 
+  /* Error, unescaped new lines cannot appear inside a string literal */
   \n {
     /* ERROR */
   }
 
+  /* Error, null cannot appear inside a string literal */
   \0 {
     /* ERROR */
   }
 
+  /* Error, EOF cannot appear inside a string literal */
   <<EOF>> {
     /* ERROR */
   }
@@ -111,6 +116,7 @@ WSPACE      [ \n\f\r\t\v]
     *string_buf_ptr++ = yytext[1];
   }
 
+  /* Any character within the string literal except key String characters */
   [^\\\n\"]+ {
     char *yptr = yytext;
     while (*yptr)
@@ -229,6 +235,8 @@ f(?i:alse) {
 {WSPACE}+ {
   /* Do nothing */
 }
+
+
 
  /*
   *  String constants (C syntax)
