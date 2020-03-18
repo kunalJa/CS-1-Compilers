@@ -41,9 +41,7 @@ extern int verbose_flag;
 
 extern YYSTYPE cool_yylval;
 
-/*
- *  Add Your own declarations here
- */
+int comment_level;
 
 %}
 /* ---------------------Definitions------------------------ */
@@ -51,21 +49,55 @@ extern YYSTYPE cool_yylval;
 SINGLECHAR  [+\-*/<@~.(){}=:;,]
 INTEGERS    [0-9]+
 ID          [A-Za-z][0-9A-Za-z_]*
+INLINE      --[^\n]*
+WSPACE      [ \n\f\r\t\v]
 
 LE          <=
 ASSIGN      <-
 DARROW      =>
 
-WSPACE      [ \n\f\r\t\v]
-
 %x str
+%x comment
 
 %%
 /* ----------------------Rules----------------------------- */
 
- /*
-  *  Nested comments
-  */
+/* Inline comment */
+{INLINE} {}
+
+/* Start of a multi-line comment */
+\(\* {
+  comment_level = 1;
+  BEGIN(comment);
+}
+
+<comment>{
+  /* Allow for mult-level commenting */
+  \(\* {
+    comment_level++;
+  }
+
+  /* Exit the comment state only if we have closed the final comment */
+  \*\) {
+    if (--comment_level == 0) {
+      BEGIN(INITIAL);
+    }
+  }
+
+  \n {}
+
+  <<EOF>> {
+    /* ERROR */
+  }
+
+  [^*()\n] {}
+
+}
+
+\*\) {
+  /* ERROR */
+}
+
 
 /* Start of a string literal */
 \" {
