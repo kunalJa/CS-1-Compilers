@@ -50,7 +50,7 @@ SINGLECHAR  [+\-*/<@~.(){}=:;,]
 INTEGERS    [0-9]+
 ID          [A-Za-z][0-9A-Za-z_]*
 INLINE      --[^\n]*
-WSPACE      [ \n\f\r\t\v]
+WSPACE      [ \f\r\t\v]
 
 LE          <=
 ASSIGN      <-
@@ -145,7 +145,6 @@ DARROW      =>
 
   \\n {
     *string_buf_ptr++ = '\n';
-    curr_lineno++;
     if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
       BEGIN(errorstr);
       cool_yylval.error_msg = "String constant too long";
@@ -182,6 +181,9 @@ DARROW      =>
 
   \\[^\0] {
     *string_buf_ptr++ = yytext[1];
+    if (yytext[1] == '\n') {
+      curr_lineno++;
+    }
     if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
       BEGIN(errorstr);
       cool_yylval.error_msg = "String constant too long";
@@ -325,10 +327,11 @@ f(?i:alse) {
 }
 
 {WSPACE}+ {
-  /* White space characters in the Cool language include " ", "\n", "\f", "\r", "\t", and "\v" */
-  if (strcmp(yytext,"\n") == 0) {
-    curr_lineno++;
-  }
+  /* White space characters in the Cool language include " ", "\f", "\r", "\t", and "\v" */
+}
+
+\n {
+  curr_lineno++;
 }
 
 {ID} {
