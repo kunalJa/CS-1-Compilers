@@ -120,16 +120,25 @@
   %type <program> program
   %type <classes> class_list
   %type <class_> class
+  %type <features> feature_list
+  %type <feature> feature
+  %type <formals> formal_list
+  %type <formal> formal
+  %type <expressions> expr_list
+  %type <expressions> expr_list_semi_colon
+  %type <expression> expr
+  %type <cases> branch_list
+  %type <case_> branch
 
-  /* You will want to change the following line. */
-  %type <features> dummy_feature_list
 
   /* Precedence declarations go here. */
 
-
 %%
   /* Save the root of the abstract syntax tree in a global variable. */
-  program: class_list { @$ = @1; ast_root = program($1); }
+  program: class_list {
+             @$ = @1;
+             ast_root = program($1);
+           }
   ;
 
   class_list: class {
@@ -137,23 +146,164 @@
                 parse_results = $$;
               }
             | class_list class {
-                $$ = append_Classes($1,single_Classes($2));
+                $$ = append_Classes($1, single_Classes($2));
                 parse_results = $$;
               }
   ;
 
   /* If no parent is specified, the class inherits from the Object class. */
-  class: CLASS TYPEID '{' dummy_feature_list '}' ';' {
-           $$ = class_($2,idtable.add_string("Object"),$4,stringtable.add_string(curr_filename));
+  class: CLASS TYPEID '{' feature_list '}' ';' {
+           $$ = class_($2, idtable.add_string("Object"), $4, stringtable.add_string(curr_filename));
          }
-       | CLASS TYPEID INHERITS TYPEID '{' dummy_feature_list '}' ';' {
-           $$ = class_($2,$4,$6,stringtable.add_string(curr_filename));
+       | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';' {
+           $$ = class_($2, $4, $6, stringtable.add_string(curr_filename));
          }
   ;
 
   /* Feature list may be empty, but no empty features in list. */
-  dummy_feature_list: /* empty */ { $$ = nil_Features(); }
+  feature_list: /* empty */ { $$ = nil_Features(); }
+              | feature {
+                  $$ = single_Features($1);
+                }
+              | feature_list feature {
+                  $$ = append_Features($1, single_Features($2));
+                }
+  ;
 
+  feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}' ';' {
+             $$ = method($1, $3, $6, $8);
+           }
+         | OBJECTID ':' TYPEID ';' {
+            $$ = attr($1, $3, no_expr());
+           }
+         | OBJECTID ':' TYPEID ASSIGN expr ';' {
+             $$ = attr($1, $3, $5);
+           }
+  ;
+
+  formal_list: /* empty */ { $$ = nil_Formals(); }
+             | formal {
+                 $$ = single_Formals($1);
+               }
+             | formal_list ',' formal {
+                 $$ = append_Formals($1, single_Formals($3));
+               }
+  ;
+
+  formal: OBJECTID ':' TYPEID {
+            $$ = formal($1, $3);
+           }
+  ;
+
+  expr_list: /* empty */ { $$ = nil_Expressions(); }
+           | expr {
+               $$ = single_Expressions($1);
+             }
+           | expr_list ',' expr {
+               $$ = append_Expressions($1, single_Expressions($3));
+             }
+  ;
+
+  expr_list_semi_colon: expr {
+                          $$ = single_Expressions($1);
+                        }
+                      | expr_list_semi_colon ';' expr ';' {
+                          $$ = append_Expressions($1, single_Expressions($3));
+                        }
+  ;
+
+  expr: OBJECTID ASSIGN expr {
+          $$ = assign($1, $3);
+        }
+      | expr '.' OBJECTID '(' expr_list ')' {
+          $$ = dispatch($1, $3, $5);
+        }
+      | expr '@' TYPEID '.' OBJECTID '(' expr_list ')' {
+          $$ = static_dispatch($1, $3, $5, $7);
+        }
+      | OBJECTID '.' '(' expr_list ')' {
+          $$ = dispatch(no_expr(), $1, $4);
+        }
+      | IF expr THEN expr ELSE expr FI {
+          $$ = cond($2, $4, $6);
+        }
+      | WHILE expr LOOP expr POOL {
+          $$ = loop($2, $4);
+        }
+      | '{' expr_list_semi_colon '}' {
+          $$ = block($2);
+        }
+      | LET OBJECTID ':' TYPEID IN expr {
+          $$ = let($2, $4, no_expr(), $6);
+        }
+      | LET OBJECTID ':' TYPEID ASSIGN expr IN expr {
+          $$ = let($2, $4, $6, $8);
+        }
+      | CASE expr OF branch_list ESAC {
+          $$ = typcase($2, $4);
+        }
+      | NEW TYPEID {
+          $$ = new_($2);
+        }
+      | ISVOID expr {
+          $$ = isvoid($2);
+        }
+      | expr '+' expr {
+          $$ = plus($1, $3);
+        }
+      | expr '-' expr {
+          $$ = sub($1, $3);
+        }
+      | expr '*' expr {
+          $$ = mul($1, $3);
+        }
+      | expr '/' expr {
+          $$ = divide($1, $3);
+        }
+      | '~' expr {
+          $$ = neg($2);
+        }
+      | expr '<' expr {
+          $$ = lt($1, $3);
+        }
+      | expr '<' '=' expr {
+          $$ = leq($1, $4);
+        }
+      | expr '=' expr {
+          $$ = eq($1, $3);
+        }
+      | NOT expr {
+          $$ = comp($2);
+        }
+      | '(' expr ')' {
+          $$ = $2;
+        }
+      | OBJECTID {
+          $$ = object($1);
+        }
+      | INT_CONST {
+          $$ = int_const($1);
+        }
+      | STR_CONST {
+          $$ = string_const($1);
+        }
+      | BOOL_CONST {
+          $$ = bool_const($1);
+        }
+  ;
+
+  branch_list: branch {
+                 $$ = single_Cases($1);
+               }
+             | branch_list branch {
+                 $$ = append_Cases($1, single_Cases($2));
+               }
+  ;
+
+  branch: OBJECTID ':' TYPEID DARROW expr ';' {
+            $$ = branch($1, $3, $5);
+          }
+  ;
 %%
 
 
