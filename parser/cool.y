@@ -120,164 +120,261 @@
   %type <program> program
   %type <classes> class_list
   %type <class_> class
-  %type <features> feature_list
+  %type <features> optional_feature_list feature_list
   %type <feature> feature
   %type <formals> formal_list
   %type <formal> formal
-  %type <expressions> expr_list
-  %type <expressions> expr_list_semi_colon
-  %type <expression> expr
+  %type <expressions> expr_list expr_list_semi_colon
+  %type <expression> expr let_expr
   %type <cases> branch_list
   %type <case_> branch
 
 
-  /* Precedence declarations go here. */
+  /* Precedence declarations go here. Higher line number indicates a higher precedence. */
+  %right LET
+  %right ASSIGN
+  %left NOT
+  %nonassoc LE '<' '='
+  %left '+' '-'
+  %left '*' '/'
+  %left ISVOID
+  %left '~'
+  %left '@'
+  %left '.'
 
 %%
   /* Save the root of the abstract syntax tree in a global variable. */
   program: class_list {
              @$ = @1;
+             SET_NODELOC(@1);
              ast_root = program($1);
            }
   ;
 
   class_list: class {
+                @$ = @1;
+                SET_NODELOC(@1);
                 $$ = single_Classes($1);
                 parse_results = $$;
               }
             | class_list class {
+                @$ = @1;
+                SET_NODELOC(@1);
                 $$ = append_Classes($1, single_Classes($2));
                 parse_results = $$;
               }
   ;
 
   /* If no parent is specified, the class inherits from the Object class. */
-  class: CLASS TYPEID '{' feature_list '}' ';' {
+  class: CLASS TYPEID '{' optional_feature_list '}' ';' {
+           @$ = @1;
+           SET_NODELOC(@1);
            $$ = class_($2, idtable.add_string("Object"), $4, stringtable.add_string(curr_filename));
          }
-       | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';' {
+       | CLASS TYPEID INHERITS TYPEID '{' optional_feature_list '}' ';' {
+           @$ = @1;
+           SET_NODELOC(@1);
            $$ = class_($2, $4, $6, stringtable.add_string(curr_filename));
          }
+       | CLASS TYPEID '{' error '}' ';' {}
+       | CLASS TYPEID error '{' optional_feature_list '}' ';' {}
+       | CLASS TYPEID INHERITS TYPEID '{' error '}' ';' {}
+  ;
+
+  optional_feature_list: /* empty */ { $$ = nil_Features(); }
+                       | feature_list {
+                          @$ = @1;
+                          SET_NODELOC(@1);
+                          $$ = $1;
+                         }
   ;
 
   /* Feature list may be empty, but no empty features in list. */
-  feature_list: /* empty */ { $$ = nil_Features(); }
-              | feature {
+  feature_list: feature {
+                  @$ = @1;
+                  SET_NODELOC(@1);
                   $$ = single_Features($1);
                 }
               | feature_list feature {
+                  @$ = @1;
+                  SET_NODELOC(@1);
                   $$ = append_Features($1, single_Features($2));
                 }
   ;
 
   feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}' ';' {
+             @$ = @1;
+             SET_NODELOC(@1);
              $$ = method($1, $3, $6, $8);
            }
          | OBJECTID ':' TYPEID ';' {
+            @$ = @1;
+            SET_NODELOC(@1);
             $$ = attr($1, $3, no_expr());
            }
          | OBJECTID ':' TYPEID ASSIGN expr ';' {
+             @$ = @1;
+             SET_NODELOC(@1);
              $$ = attr($1, $3, $5);
            }
+         | OBJECTID ':' error ';' {}
+         | OBJECTID ':' TYPEID ASSIGN error ';' {}
+         | error ':' TYPEID ';' {}
+         | error ':' TYPEID ASSIGN expr ';' {}
+         | OBJECTID '(' error ')' ':' TYPEID '{' expr '}' ';' {}
+         | OBJECTID '(' formal_list ')' ':' TYPEID '{' error '}' ';' {}
+         | error '(' formal_list ')' ':' TYPEID '{' expr '}' ';' {}
   ;
 
   formal_list: /* empty */ { $$ = nil_Formals(); }
              | formal {
+                 @$ = @1;
+                 SET_NODELOC(@1);
                  $$ = single_Formals($1);
                }
              | formal_list ',' formal {
+                 @$ = @1;
+                 SET_NODELOC(@1);
                  $$ = append_Formals($1, single_Formals($3));
                }
   ;
 
   formal: OBJECTID ':' TYPEID {
+            @$ = @1;
+            SET_NODELOC(@1);
             $$ = formal($1, $3);
            }
   ;
 
   expr_list: /* empty */ { $$ = nil_Expressions(); }
            | expr {
+               @$ = @1;
+               SET_NODELOC(@1);
                $$ = single_Expressions($1);
              }
            | expr_list ',' expr {
+               @$ = @1;
+               SET_NODELOC(@1);
                $$ = append_Expressions($1, single_Expressions($3));
              }
   ;
 
-  expr_list_semi_colon: expr {
+  expr_list_semi_colon: expr ';'{
+                          @$ = @1;
+                          SET_NODELOC(@1);
                           $$ = single_Expressions($1);
                         }
-                      | expr_list_semi_colon ';' expr ';' {
-                          $$ = append_Expressions($1, single_Expressions($3));
+                      | expr_list_semi_colon expr ';' {
+                          @$ = @1;
+                          SET_NODELOC(@1);
+                          $$ = append_Expressions($1, single_Expressions($2));
                         }
+                      | error ';' {}
   ;
 
   expr: OBJECTID ASSIGN expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = assign($1, $3);
         }
       | expr '.' OBJECTID '(' expr_list ')' {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = dispatch($1, $3, $5);
         }
       | expr '@' TYPEID '.' OBJECTID '(' expr_list ')' {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = static_dispatch($1, $3, $5, $7);
         }
-      | OBJECTID '.' '(' expr_list ')' {
-          $$ = dispatch(no_expr(), $1, $4);
+      | OBJECTID '(' expr_list ')' {
+          @$ = @1;
+          SET_NODELOC(@1);
+          $$ = dispatch(object(idtable.add_string("self")), $1, $3);
         }
       | IF expr THEN expr ELSE expr FI {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = cond($2, $4, $6);
         }
       | WHILE expr LOOP expr POOL {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = loop($2, $4);
         }
       | '{' expr_list_semi_colon '}' {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = block($2);
         }
-      | LET OBJECTID ':' TYPEID IN expr {
-          $$ = let($2, $4, no_expr(), $6);
-        }
-      | LET OBJECTID ':' TYPEID ASSIGN expr IN expr {
-          $$ = let($2, $4, $6, $8);
+      | LET let_expr {
+          @$ = @2;
+          SET_NODELOC(@2);
+          $$ = $2;
         }
       | CASE expr OF branch_list ESAC {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = typcase($2, $4);
         }
       | NEW TYPEID {
           $$ = new_($2);
         }
       | ISVOID expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = isvoid($2);
         }
       | expr '+' expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = plus($1, $3);
         }
       | expr '-' expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = sub($1, $3);
         }
       | expr '*' expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = mul($1, $3);
         }
       | expr '/' expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = divide($1, $3);
         }
       | '~' expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = neg($2);
         }
       | expr '<' expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = lt($1, $3);
         }
-      | expr '<' '=' expr {
-          $$ = leq($1, $4);
+      | expr LE expr {
+          @$ = @1;
+          SET_NODELOC(@1);
+          $$ = leq($1, $3);
         }
       | expr '=' expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = eq($1, $3);
         }
       | NOT expr {
+          @$ = @1;
+          SET_NODELOC(@1);
           $$ = comp($2);
         }
       | '(' expr ')' {
-          $$ = $2;
-        }
+        @$ = @2;
+        SET_NODELOC(@2);
+        $$ = $2;
+      }
       | OBJECTID {
           $$ = object($1);
         }
@@ -292,15 +389,57 @@
         }
   ;
 
+  let_expr: OBJECTID ':' TYPEID IN expr %prec LET {
+              @$ = @1;
+              SET_NODELOC(@1);
+              $$ = let($1, $3, no_expr(), $5);
+            }
+          | OBJECTID ':' TYPEID ASSIGN expr IN expr %prec LET {
+              @$ = @1;
+              SET_NODELOC(@1);
+              $$ = let($1, $3, $5, $7);
+            }
+          | OBJECTID ':' TYPEID ',' let_expr %prec LET {
+              @$ = @1;
+              SET_NODELOC(@1);
+              $$ = let($1, $3, no_expr(), $5);
+            }
+          | OBJECTID ':' TYPEID ASSIGN expr ',' let_expr %prec LET {
+              @$ = @1;
+              SET_NODELOC(@1);
+              $$ = let($1, $3, $5, $7);
+            }
+          | OBJECTID ':' error IN expr %prec LET {}
+          | OBJECTID ':' error ',' let_expr %prec LET {}
+          | OBJECTID ':' error ASSIGN expr IN expr %prec LET {}
+          | OBJECTID ':' error ASSIGN expr ',' let_expr %prec LET {}
+          | OBJECTID ':' TYPEID ASSIGN error IN expr %prec LET {}
+          | OBJECTID ':' TYPEID ASSIGN error ',' let_expr %prec LET {}
+          | error ':' ':' TYPEID IN expr %prec LET {}
+          | error ':' ':' TYPEID ASSIGN expr IN expr %prec LET {}
+          | error ':' ':' TYPEID ',' let_expr %prec LET {}
+          | error ':' ':' TYPEID ASSIGN expr ',' let_expr %prec LET {}
+          | OBJECTID ':' TYPEID IN error %prec LET {}
+          | OBJECTID ':' TYPEID ASSIGN expr IN error %prec LET {}
+          | OBJECTID ':' TYPEID ',' error %prec LET {}
+          | OBJECTID ':' TYPEID ASSIGN expr ',' error %prec LET {}
+  ;
+
   branch_list: branch {
+                 @$ = @1;
+                 SET_NODELOC(@1);
                  $$ = single_Cases($1);
                }
              | branch_list branch {
+                 @$ = @1;
+                 SET_NODELOC(@1);
                  $$ = append_Cases($1, single_Cases($2));
                }
   ;
 
   branch: OBJECTID ':' TYPEID DARROW expr ';' {
+            @$ = @1;
+            SET_NODELOC(@1);
             $$ = branch($1, $3, $5);
           }
   ;
